@@ -14,7 +14,7 @@ from transformers import get_linear_schedule_with_warmup
 
 
 def run():
-    print('Loading data...')
+    print('1.Loading data...')
     dfx = pd.read_csv(config.TRAINING_FILE).fillna("none")
     dfx = dfx[:2000]
     dfx.sentiment = dfx.sentiment.apply(lambda x: 1 if x == "positive" else 0)
