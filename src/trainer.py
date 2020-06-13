@@ -33,13 +33,12 @@ class BERTTrainer:
         optimizer_parameters = [{"params": [p for n, p in param_optimizer if not any(nd in n for nd in no_decay)],"weight_decay": 0.001,},
                                     {"params": [p for n, p in param_optimizer if any(nd in n for nd in no_decay)],"weight_decay": 0.0,},]
 
-        
         total_steps = len(self.train_data) * config.EPOCHS
-        self.optimizer = AdamW(optimizer_parameters, lr=config.LR, correct_bias=False)
+        self.optimizer = AdamW(optimizer_parameters, lr=config.LR)
         self.scheduler = get_linear_schedule_with_warmup(
-            self.optimizer, num_warmup_steps=0, num_training_steps=self.total_steps
+            self.optimizer, num_warmup_steps=0, num_training_steps=total_steps
         )
-        self.loss_fn = nn.BCEWithLogitsLoss().to(self.device)
+        self.loss_fn = nn.BCEWithLogitsLoss()
         
 
     def train_fn(self, epoch, n_examples):
@@ -58,10 +57,10 @@ class BERTTrainer:
             token_type_ids = d["token_type_ids"]
             targets = d["targets"]
             
-            input_ids = input_ids.to(device, dtype=torch.long)
-            token_type_ids = token_type_ids.to(device, dtype=torch.long)
-            attention_mask = attention_mask.to(device, dtype=torch.long)
-            targets = targets.to(device, dtype=torch.float).reshape(-1,1)
+            input_ids = input_ids.to(self.device, dtype=torch.long)
+            token_type_ids = token_type_ids.to(self.device, dtype=torch.long)
+            attention_mask = attention_mask.to(self.device, dtype=torch.long)
+            targets = targets.to(self.device, dtype=torch.float).reshape(-1,1)
             
             outputs = model(input_ids=input_ids,
                             attention_mask=attention_mask,
@@ -75,6 +74,7 @@ class BERTTrainer:
             loss = self.loss_fn(outputs, targets.view(-1, 1))
             loss = loss/config.ACCUMULATION
             
+            loss.backward()
             
             if((batch_idx+1) % config.ACCUMULATION) == 0:
                 losses.append(loss.item())
@@ -91,13 +91,13 @@ class BERTTrainer:
         return correct_predictions.double() / n_examples, np.mean(losses)
 
 
-    def eval_model(self, n_examples):
+    def eval_fn(self):
         model = self.model.eval()
         fin_targets = []
         fin_outputs = []
         
         with torch.no_grad():
-            for batch_idx, d in self.test_data:
+            for batch_idx, d in enumerate(self.test_data):
                 input_ids = d["input_ids"].to(self.device)
                 attention_mask = d["attention_mask"].to(self.device)
                 token_type_ids = d["token_type_ids"].to(self.device)

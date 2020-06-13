@@ -11,6 +11,7 @@ from sklearn import model_selection
 from sklearn import metrics
 from transformers import AdamW
 from transformers import get_linear_schedule_with_warmup
+from trainer import BERTTrainer
 
 
 def run():
@@ -44,31 +45,26 @@ def run():
         valid_dataset, batch_size=config.VALID_BATCH_SIZE, num_workers=1
     )
 
-    print('Building model...')
-    device = torch.device("cuda")
+    print('Building Bert Model...')
     model = BERTBaseUncased()
-    model.to(device)
+    
+    print("Creating BERT Trainer...")
+    trainer = BERTTrainer(model=model,
+                          train_dataloader=train_data_loader, 
+                          test_dataloader=valid_data_loader, 
+                          lr=config.LR, 
+                          with_cuda=config.USE_CUDA)
 
-    param_optimizer = list(model.named_parameters())
-    no_decay = ["bias", "LayerNorm.bias", "LayerNorm.weight"]
-    optimizer_parameters = [{"params": [p for n, p in param_optimizer if not any(nd in n for nd in no_decay)],"weight_decay": 0.001,},
-                            {"params": [p for n, p in param_optimizer if any(nd in n for nd in no_decay)],"weight_decay": 0.0,},]
-
-    num_train_steps = int(len(df_train) / config.TRAIN_BATCH_SIZE * config.EPOCHS)
-    optimizer = AdamW(optimizer_parameters, lr=3e-5)
-    scheduler = get_linear_schedule_with_warmup(
-        optimizer, num_warmup_steps=0, num_training_steps=num_train_steps
-    )
-
+    
     # model = nn.DataParallel(model)
 
     print('Training Start...')
     best_accuracy = 0
     for epoch in range(config.EPOCHS):
-        train_acc, train_loss = engine.train_fn(train_data_loader, model, optimizer, device, scheduler, epoch, len(df_train))
+        train_acc, train_loss = trainer.train_fn(epoch, len(df_train))
         print(f'Train loss: {train_loss} Train accuracy: {train_acc:.4%}')
         
-        outputs, targets = engine.eval_fn(valid_data_loader, model, device)
+        outputs, targets = trainer.eval_fn()
         outputs = np.array(outputs) >= 0.5
         accuracy = metrics.accuracy_score(targets, outputs)
         print(f"Accuracy Score = {accuracy:.2%}")
