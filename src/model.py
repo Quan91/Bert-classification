@@ -7,7 +7,7 @@ class BERTBaseUncased(nn.Module):
     def __init__(self):
         super(BERTBaseUncased, self).__init__()
         self.bert = transformers.BertModel.from_pretrained(config.BERT_PATH)
-        self.bert_drop = nn.Dropout(0.3)
+        self.bert_drop = nn.Dropout(config.DROPOUT)
         self.out = nn.Linear(self.bert.config.hidden_size, 1)  # (768, 1)
 
     def forward(self, input_ids, attention_mask, token_type_ids):
