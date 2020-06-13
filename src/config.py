@@ -12,3 +12,5 @@ TOKENIZER = transformers.BertTokenizer.from_pretrained(BERT_PATH,
                                                        do_lower_case=True)
 ACCUMULATION = 8
 LR = 3e-5
+DROPOUT = 0.3
+USE_CUDA = True
