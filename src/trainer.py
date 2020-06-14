@@ -3,7 +3,7 @@ from torch import nn
 from transformers import BertTokenizer, AdamW, get_linear_schedule_with_warmup
 import numpy as np
 import config
-import tqdm
+# import tqdm
 
 class BERTTrainer:
     def __init__(self, model, train_dataloader, test_dataloader, lr, with_cuda):
